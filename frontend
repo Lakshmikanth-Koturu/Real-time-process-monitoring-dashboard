@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Real-Time Process Dashboard</title>
+</head>
+<body>
+  <h2>CPU Usage</h2>
+  <canvas id="cpuChart"></canvas>
+
+  <h2>Memory Usage</h2>
+  <div id="memory"></div>
+
+  <h2>Process List</h2>
+  <table border="1" id="procTable">
+    <tr>
+      <th>PID</th>
+      <th>Name</th>
+      <th>Status</th>
+      <th>CPU%</th>
+      <th>Mem%</th>
+      <th>Action</th>
+    </tr>
+  </table>
+
+  <script>
+    async function loadData() {
+      const res = await fetch("/stats");
+      const data = await res.json();
+
+      document.getElementById("memory").innerText = data.memory_usage + "%";
+
+      const table = document.getElementById("procTable");
+      table.innerHTML =
+        "<tr><th>PID</th><th>Name</th><th>Status</th><th>CPU%</th><th>Mem%</th><th>Action</th></tr>";
+
+      data.processes.forEach(p => {
+        table.innerHTML += `
+          <tr>
+            <td>${p.pid}</td>
+            <td>${p.name}</td>
+            <td>${p.status}</td>
+            <td>${p.cpu_percent}</td>
+            <td>${p.memory_percent}</td>
+            <td><button onclick="kill(${p.pid})">Kill</button></td>
+          </tr>`;
+      });
+    }
+
+    async function kill(pid) {
+      await fetch("/kill/" + pid);
+      loadData();
+    }
+
+    setInterval(loadData, 2000);
+  </script>
+
+</body>
+</html>
