@@ -1,16 +1,26 @@
 from flask import Flask, jsonify
 import psutil
+import time
 
 app = Flask(__name__)
 
 @app.route("/stats")
 def system_stats():
-    cpu = psutil.cpu_percent(interval=1)
+    cpu = psutil.cpu_percent(interval=0.2)
     memory = psutil.virtual_memory().percent
+
+    procs = list(psutil.process_iter(['pid', 'name', 'status']))
+    time.sleep(0.1)
     processes = []
 
-    for p in psutil.process_iter(['pid', 'name', 'status', 'cpu_percent', 'memory_percent']):
-        processes.append(p.info)
+    for p in procs:
+        try:
+            info = p.as_dict(attrs=['pid', 'name', 'status'])
+            info['cpu_percent'] = p.cpu_percent()
+            info['memory_percent'] = p.memory_percent()
+            processes.append(info)
+        except:
+            pass
 
     return jsonify({
         "cpu_usage": cpu,
@@ -20,8 +30,11 @@ def system_stats():
 
 @app.route("/kill/<int:pid>")
 def kill_process(pid):
-    psutil.Process(pid).kill()
-    return jsonify({"status": "terminated"})
+    try:
+        psutil.Process(pid).kill()
+        return jsonify({"status": "terminated"})
+    except:
+        return jsonify({"status": "failed"})
 
 if __name__ == "__main__":
     app.run(debug=True)
